@@ -266,7 +266,7 @@ elseif(isset($_POST['fname_add'], $_POST['lname_add'], $_POST['mname_add'], $_PO
     $rand = rand(100, 999);
     $reg = "form".$_POST['form_add']."/".substr(date("Y"), 2,3)."/".$rand;
     $sub = substr($db->real_escape_string($_POST['fname_add']), 0, 1).$db->real_escape_string($_POST['lname_add']);
-    $email = "nkk".substr(date("Y"), 2,3)."-".$sub."@nkk.ac.mw";
+    $email = "nkk".substr(date("Y"), 2,3)."-".$sub."@nkk-sec.com";
     $add = db_insert("students", [
         "first" => $db->real_escape_string($_POST['fname_add']),
         "middle" => $db->real_escape_string($_POST['mname_add']),
@@ -276,9 +276,9 @@ elseif(isset($_POST['fname_add'], $_POST['lname_add'], $_POST['mname_add'], $_PO
         "form" => $db->real_escape_string($_POST['form_add']),
         "email" =>$email,
         "time_added" => time(),
-        "registered_by" => "admin",
+        "registered_by" => 11,
         "status" => "active",
-        "school" => $db->real_escape_string($_POST['school'])
+        "school" => "day"
     ]);
 
     echo json_encode(["status" => true, "message" => "Success"]);
