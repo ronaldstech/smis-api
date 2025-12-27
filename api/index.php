@@ -262,7 +262,7 @@ elseif(isset($_GET['print_students'])){
    
 }
 
-elseif(isset($_POST['fname_add'], $_POST['lname_add'], $_POST['mname_add'], $_POST['gender_add'], $_POST['form_add'])){
+elseif(isset($_POST['fname_add'], $_POST['lname_add'], $_POST['mname_add'], $_POST['gender_add'], $_POST['form_add'], $_POST['school'])){
     $rand = rand(100, 999);
     $reg = "form".$_POST['form_add']."/".substr(date("Y"), 2,3)."/".$rand;
     $sub = substr($db->real_escape_string($_POST['fname_add']), 0, 1).$db->real_escape_string($_POST['lname_add']);
@@ -277,7 +277,8 @@ elseif(isset($_POST['fname_add'], $_POST['lname_add'], $_POST['mname_add'], $_PO
         "email" =>$email,
         "time_added" => time(),
         "registered_by" => "admin",
-        "status" => "active"
+        "status" => "active",
+        "school" => $db->real_escape_string($_POST['school'])
     ]);
 
     echo json_encode(["status" => true, "message" => "Success"]);
