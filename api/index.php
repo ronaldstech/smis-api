@@ -140,7 +140,7 @@ elseif (isset($_GET['getStaffA'])) {
     if ($staffResult && $staffResult->num_rows > 0) {
         while ($row = $staffResult->fetch_assoc()) {
             $staffs[$row['id']] = [
-                "id" => $row['id'],
+                "id" => (int) $row['id'],
                 "username" => $row['username'],
                 "subject_count" => (int) $row['subject_count'],
                 "subjects" => []
@@ -148,11 +148,16 @@ elseif (isset($_GET['getStaffA'])) {
         }
     }
 
-    // 3. Fetch all subjects for staff IN ONE QUERY
+    // 3. Fetch subjects WITH NAMES (JOIN subjects table)
     $subjectQuery = "
-        SELECT teacher, subject
-        FROM subject_teachers
-        WHERE aca_id = '$aca_id'
+        SELECT 
+            st.teacher,
+            sub.id AS subject_id,
+            sub.name AS subject_name
+        FROM subject_teachers st
+        INNER JOIN subjects sub ON sub.id = st.subject
+        WHERE st.aca_id = '$aca_id'
+        ORDER BY sub.name ASC
     ";
 
     $subjectResult = $db->query($subjectQuery);
@@ -160,7 +165,10 @@ elseif (isset($_GET['getStaffA'])) {
     if ($subjectResult && $subjectResult->num_rows > 0) {
         while ($row = $subjectResult->fetch_assoc()) {
             if (isset($staffs[$row['teacher']])) {
-                $staffs[$row['teacher']]['subjects'][] = $row['subject'];
+                $staffs[$row['teacher']]['subjects'][] = [
+                    "id" => (int) $row['subject_id'],
+                    "name" => $row['subject_name']
+                ];
             }
         }
     }
@@ -169,7 +177,6 @@ elseif (isset($_GET['getStaffA'])) {
     echo json_encode(array_values($staffs));
     exit;
 }
-
 
 elseif(isset($_GET['getStudents'])){
     $read = $db->query("SELECT * FROM students ORDER BY form ASC, `last` ASC, `first` ASC, `status` ASC");
