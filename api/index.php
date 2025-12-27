@@ -103,41 +103,73 @@ elseif(isset($_GET['getStaff'])){
     exit();
 }
 
-elseif(isset($_GET['getStaffA'])){
-    //fetching all staffs active
-    $aca = $db->query("SELECT * FROM academic_years WHERE status = 'active'")->fetch_assoc();
-    $aca_id = $aca['id'];
-    //for holding final data
-    $staffs = [];
-    $readStaff = $db->query("SELECT staff.id, staff.username, COUNT(subject_teachers.id) AS subject_count
-        FROM staff
-        LEFT JOIN subject_teachers ON staff.id = subject_teachers.teacher
-        WHERE staff.status = 'active'
-        GROUP BY staff.id");
-    if($readStaff->num_rows > 0){
-        while($row = $readStaff->fetch_assoc()){
-            //select subjects for each teacher
-            //$readSubs = $db->query("SELECT * FROM subjects WHERE id IN (SELECT subject FROM subject_teachers WHERE teacher = '".$row['id']."')");
-            $teacher = $row['id'];
-            $subjects_read = $db->query("SELECT subject FROM subject_teachers WHERE aca_id = '$aca_id' AND teacher = '$teacher'");
+elseif (isset($_GET['getStaffA'])) {
 
-            $subjects = [];
-            while($sub = $subjects_read->fetch_assoc()){
-                $subjects[] = $sub['subject'];
-            }
-            
-            $staffs[] = [
+    // 1. Get active academic year
+    $acaRes = $db->query("SELECT id FROM academic_years WHERE status = 'active' LIMIT 1");
+
+    if (!$acaRes || $acaRes->num_rows === 0) {
+        http_response_code(500);
+        echo json_encode([
+            "status" => false,
+            "message" => "No active academic year found"
+        ]);
+        exit;
+    }
+
+    $aca_id = $acaRes->fetch_assoc()['id'];
+
+    // 2. Fetch staff with subject count FOR THIS ACADEMIC YEAR
+    $staffQuery = "
+        SELECT 
+            s.id,
+            s.username,
+            COUNT(st.id) AS subject_count
+        FROM staff s
+        LEFT JOIN subject_teachers st 
+            ON s.id = st.teacher 
+            AND st.aca_id = '$aca_id'
+        WHERE s.status = 'active'
+        GROUP BY s.id
+        ORDER BY s.username ASC
+    ";
+
+    $staffResult = $db->query($staffQuery);
+    $staffs = [];
+
+    if ($staffResult && $staffResult->num_rows > 0) {
+        while ($row = $staffResult->fetch_assoc()) {
+            $staffs[$row['id']] = [
                 "id" => $row['id'],
                 "username" => $row['username'],
-                "subject_count" => $row['subject_count'],
-                "subjects" => $subjects
+                "subject_count" => (int) $row['subject_count'],
+                "subjects" => []
             ];
         }
     }
+
+    // 3. Fetch all subjects for staff IN ONE QUERY
+    $subjectQuery = "
+        SELECT teacher, subject
+        FROM subject_teachers
+        WHERE aca_id = '$aca_id'
+    ";
+
+    $subjectResult = $db->query($subjectQuery);
+
+    if ($subjectResult && $subjectResult->num_rows > 0) {
+        while ($row = $subjectResult->fetch_assoc()) {
+            if (isset($staffs[$row['teacher']])) {
+                $staffs[$row['teacher']]['subjects'][] = $row['subject'];
+            }
+        }
+    }
+
     header("Content-Type: application/json");
-    echo json_encode($staffs);
-    exit();
+    echo json_encode(array_values($staffs));
+    exit;
 }
+
 
 elseif(isset($_GET['getStudents'])){
     $read = $db->query("SELECT * FROM students ORDER BY form ASC, `last` ASC, `first` ASC, `status` ASC");
