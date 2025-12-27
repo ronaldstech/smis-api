@@ -1125,8 +1125,15 @@ elseif (isset($_POST['student_id'], $_POST['deleteStudent'])) {
     }
 }
 
-else{
-    echo "No data - ".json_encode($_GET);
+else {
+    http_response_code(400);
+    echo json_encode([
+        "status" => false,
+        "message" => "Invalid API request",
+        "params" => $_GET
+    ]);
+    exit();
 }
+
 
 ?>
