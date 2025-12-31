@@ -698,26 +698,70 @@ elseif(isset($_GET['getUploadStatus'])){
     exit();
 }
 
-elseif(isset($_GET['getYourStudents'], $_GET['form'], $_GET['academic_id'], $_GET['subject_id'])){
-    $form = $_GET['form'];
+elseif (
+    isset($_GET['getYourStudents'], $_GET['form'], $_GET['academic_id'], $_GET['subject_id'])
+) {
+    $form   = $_GET['form'];
     $aca_id = $_GET['academic_id'];
     $sub_id = $_GET['subject_id'];
 
+    // Prepare statement with LEFT JOIN to avoid N+1 queries
+    $stmt = $db->prepare("
+        SELECT 
+            s.*,
+            m.id AS mark_id,
+            m.mark,
+            m.grade,
+            m.comment
+        FROM students s
+        LEFT JOIN marks m 
+            ON m.student = s.id
+            AND m.aca_id = ?
+            AND m.form = ?
+            AND m.subject = ?
+        WHERE s.form = ?
+        ORDER BY s.last ASC, s.first ASC
+    ");
+
+    $stmt->bind_param("ssss", $aca_id, $form, $sub_id, $form);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
     $data = [];
-    $read = $db->query("SELECT * FROM students WHERE form = '$form' ORDER BY last ASC, first asc");
-    while($row = $read->fetch_assoc()){
-        $student_id = $row['id'];
-        $row['subject'] = $sub_id;
+
+    while ($row = $result->fetch_assoc()) {
+
+        // Normalize mark data
         $row['academic_id'] = $aca_id;
-        $row['mark'] = $mark_read = $db->query("SELECT * FROM marks WHERE student = '$student_id' AND aca_id = '$aca_id' AND form = '$form' AND subject = '$sub_id'")->fetch_assoc();
-        $row['mark'] = $row['mark'] ?: db_default("marks");
+        $row['subject']     = $sub_id;
+
+        if ($row['mark_id'] === null) {
+            // No mark found → use defaults
+            $row['mark'] = db_default("marks");
+        } else {
+            $row['mark'] = [
+                'id'      => $row['mark_id'],
+                'mark'    => $row['mark'],
+                'grade'   => $row['grade'],
+                'comment' => $row['comment']
+            ];
+        }
+
+        // Remove duplicated columns
+        unset(
+            $row['mark_id'],
+            $row['grade'],
+            $row['comment']
+        );
+
         $data[] = $row;
     }
-    
-    header("Content-Type: application/json");
-    echo json_encode($data);
+
+    header("Content-Type: application/json; charset=UTF-8");
+    echo json_encode($data, JSON_UNESCAPED_UNICODE);
     exit();
 }
+
 
 elseif(isset($_POST['updateAssessment'], $_POST['id'], $_POST['subject'], $_POST['form'], $_POST['academic_id'], $_POST['value'])){
     $student = $_POST['id'];
