@@ -698,26 +698,89 @@ elseif(isset($_GET['getUploadStatus'])){
     exit();
 }
 
-elseif(isset($_GET['getYourStudents'], $_GET['form'], $_GET['academic_id'], $_GET['subject_id'])){
-    $form = $_GET['form'];
-    $aca_id = $_GET['academic_id'];
-    $sub_id = $_GET['subject_id'];
+elseif (
+    isset($_GET['getYourStudents'], $_GET['form'], $_GET['academic_id'], $_GET['subject_id'])
+) {
+
+    $form   = (int) $_GET['form'];
+    $aca_id = (int) $_GET['academic_id'];
+    $sub_id = (int) $_GET['subject_id'];
+
+    $sql = "
+        SELECT 
+            s.*,
+            m.id AS mark_id,
+            m.assessments,
+            m.end_term,
+            m.final,
+            m.remark,
+            m.time_updated,
+            m.grade
+        FROM students s
+        LEFT JOIN marks m 
+            ON m.student = s.id
+            AND m.aca_id = ?
+            AND m.form = ?
+            AND m.subject = ?
+        WHERE s.form = ?
+        ORDER BY s.last ASC, s.first ASC
+    ";
+
+    $stmt = $db->prepare($sql);
+    if (!$stmt) {
+        http_response_code(500);
+        echo json_encode(["error" => $db->error]);
+        exit;
+    }
+
+    $stmt->bind_param("iiii", $aca_id, $form, $sub_id, $form);
+    $stmt->execute();
+
+    $result = $stmt->get_result();
 
     $data = [];
-    $read = $db->query("SELECT * FROM students WHERE form = '$form' ORDER BY last ASC, first asc");
-    while($row = $read->fetch_assoc()){
-        $student_id = $row['id'];
-        $row['subject'] = $sub_id;
+
+    while ($row = $result->fetch_assoc()) {
+
+        if ($row['mark_id']) {
+            $row['mark'] = [
+                "id"           => (int) $row['mark_id'],
+                "student"      => (int) $row['id'],
+                "aca_id"       => $aca_id,
+                "subject"      => $sub_id,
+                "form"         => $form,
+                "assessments"  => (int) $row['assessments'],
+                "end_term"     => (int) $row['end_term'],
+                "final"        => (int) $row['final'],
+                "remark"       => $row['remark'],
+                "time_updated" => $row['time_updated'],
+                "grade"        => $row['grade']
+            ];
+        } else {
+            $row['mark'] = null;
+        }
+
         $row['academic_id'] = $aca_id;
-        $row['mark'] = $mark_read = $db->query("SELECT * FROM marks WHERE student = '$student_id' AND aca_id = '$aca_id' AND form = '$form' AND subject = '$sub_id'")->fetch_assoc();
-        $row['mark'] = $row['mark'] ?: db_default("marks");
+        $row['subject']     = $sub_id;
+
+        unset(
+            $row['mark_id'],
+            $row['assessments'],
+            $row['end_term'],
+            $row['final'],
+            $row['remark'],
+            $row['time_updated'],
+            $row['grade']
+        );
+
         $data[] = $row;
     }
-    
-    header("Content-Type: application/json");
+
+    header("Content-Type: application/json; charset=UTF-8");
     echo json_encode($data);
-    exit();
+    exit;
 }
+
 
 elseif(isset($_POST['updateAssessment'], $_POST['id'], $_POST['subject'], $_POST['form'], $_POST['academic_id'], $_POST['value'])){
     $student = $_POST['id'];
