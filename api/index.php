@@ -701,18 +701,16 @@ elseif(isset($_GET['getUploadStatus'])){
 elseif (
     isset($_GET['getYourStudents'], $_GET['form'], $_GET['academic_id'], $_GET['subject_id'])
 ) {
-    $form   = $_GET['form'];
-    $aca_id = $_GET['academic_id'];
-    $sub_id = $_GET['subject_id'];
 
-    // Prepare statement with LEFT JOIN to avoid N+1 queries
-    $stmt = $db->prepare("
+    $form   = (int) $_GET['form'];
+    $aca_id = (int) $_GET['academic_id'];
+    $sub_id = (int) $_GET['subject_id'];
+
+    $sql = "
         SELECT 
             s.*,
             m.id AS mark_id,
-            m.mark,
-            m.grade,
-            m.comment
+            m.mark
         FROM students s
         LEFT JOIN marks m 
             ON m.student = s.id
@@ -721,47 +719,55 @@ elseif (
             AND m.subject = ?
         WHERE s.form = ?
         ORDER BY s.last ASC, s.first ASC
-    ");
+    ";
 
-    $stmt->bind_param("ssss", $aca_id, $form, $sub_id, $form);
+    $stmt = $db->prepare($sql);
+    if (!$stmt) {
+        http_response_code(500);
+        echo json_encode(['error' => $db->error]);
+        exit;
+    }
+
+    $stmt->bind_param("iiii", $aca_id, $form, $sub_id, $form);
     $stmt->execute();
-    $result = $stmt->get_result();
 
-    $data = [];
+    $result = $stmt->get_result(); // TRY mysqlnd first
 
-    while ($row = $result->fetch_assoc()) {
-
-        // Normalize mark data
-        $row['academic_id'] = $aca_id;
-        $row['subject']     = $sub_id;
-
-        if ($row['mark_id'] === null) {
-            // No mark found → use defaults
-            $row['mark'] = db_default("marks");
-        } else {
-            $row['mark'] = [
-                'id'      => $row['mark_id'],
-                'mark'    => $row['mark'],
-                'grade'   => $row['grade'],
-                'comment' => $row['comment']
-            ];
+    if ($result) {
+        // mysqlnd available
+        $data = [];
+        while ($row = $result->fetch_assoc()) {
+            $row['academic_id'] = $aca_id;
+            $row['subject']     = $sub_id;
+            $row['mark']        = $row['mark'] !== null ? $row['mark'] : db_default("marks");
+            unset($row['mark_id']);
+            $data[] = $row;
         }
+    } else {
+        // Fallback if mysqlnd is NOT available
+        $stmt->store_result();
 
-        // Remove duplicated columns
-        unset(
-            $row['mark_id'],
-            $row['grade'],
-            $row['comment']
-        );
+        $meta = $stmt->result_metadata();
+        $fields = [];
+        while ($field = $meta->fetch_field()) {
+            $fields[] = &$row[$field->name];
+        }
+        call_user_func_array([$stmt, 'bind_result'], $fields);
 
-        $data[] = $row;
+        $data = [];
+        while ($stmt->fetch()) {
+            $row['academic_id'] = $aca_id;
+            $row['subject']     = $sub_id;
+            $row['mark']        = isset($row['mark']) ? $row['mark'] : db_default("marks");
+            unset($row['mark_id']);
+            $data[] = $row;
+        }
     }
 
     header("Content-Type: application/json; charset=UTF-8");
-    echo json_encode($data, JSON_UNESCAPED_UNICODE);
-    exit();
+    echo json_encode($data);
+    exit;
 }
-
 
 elseif(isset($_POST['updateAssessment'], $_POST['id'], $_POST['subject'], $_POST['form'], $_POST['academic_id'], $_POST['value'])){
     $student = $_POST['id'];
