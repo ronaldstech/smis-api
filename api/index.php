@@ -698,75 +698,25 @@ elseif(isset($_GET['getUploadStatus'])){
     exit();
 }
 
-elseif (
-    isset($_GET['getYourStudents'], $_GET['form'], $_GET['academic_id'], $_GET['subject_id'])
-) {
+elseif(isset($_GET['getYourStudents'], $_GET['form'], $_GET['academic_id'], $_GET['subject_id'])){
+    $form = $_GET['form'];
+    $aca_id = $_GET['academic_id'];
+    $sub_id = $_GET['subject_id'];
 
-    $form   = (int) $_GET['form'];
-    $aca_id = (int) $_GET['academic_id'];
-    $sub_id = (int) $_GET['subject_id'];
-
-    $sql = "
-        SELECT 
-            s.*,
-            m.id AS mark_id,
-            m.mark
-        FROM students s
-        LEFT JOIN marks m 
-            ON m.student = s.id
-            AND m.aca_id = ?
-            AND m.form = ?
-            AND m.subject = ?
-        WHERE s.form = ?
-        ORDER BY s.last ASC, s.first ASC
-    ";
-
-    $stmt = $db->prepare($sql);
-    if (!$stmt) {
-        http_response_code(500);
-        echo json_encode(['error' => $db->error]);
-        exit;
+    $data = [];
+    $read = $db->query("SELECT * FROM students WHERE form = '$form' ORDER BY last ASC, first asc");
+    while($row = $read->fetch_assoc()){
+        $student_id = $row['id'];
+        $row['subject'] = $sub_id;
+        $row['academic_id'] = $aca_id;
+        $row['mark'] = $mark_read = $db->query("SELECT * FROM marks WHERE student = '$student_id' AND aca_id = '$aca_id' AND form = '$form' AND subject = '$sub_id'")->fetch_assoc();
+        $row['mark'] = $row['mark'] ?: db_default("marks");
+        $data[] = $row;
     }
-
-    $stmt->bind_param("iiii", $aca_id, $form, $sub_id, $form);
-    $stmt->execute();
-
-    $result = $stmt->get_result(); // TRY mysqlnd first
-
-    if ($result) {
-        // mysqlnd available
-        $data = [];
-        while ($row = $result->fetch_assoc()) {
-            $row['academic_id'] = $aca_id;
-            $row['subject']     = $sub_id;
-            $row['mark']        = $row['mark'] !== null ? $row['mark'] : db_default("marks");
-            unset($row['mark_id']);
-            $data[] = $row;
-        }
-    } else {
-        // Fallback if mysqlnd is NOT available
-        $stmt->store_result();
-
-        $meta = $stmt->result_metadata();
-        $fields = [];
-        while ($field = $meta->fetch_field()) {
-            $fields[] = &$row[$field->name];
-        }
-        call_user_func_array([$stmt, 'bind_result'], $fields);
-
-        $data = [];
-        while ($stmt->fetch()) {
-            $row['academic_id'] = $aca_id;
-            $row['subject']     = $sub_id;
-            $row['mark']        = isset($row['mark']) ? $row['mark'] : db_default("marks");
-            unset($row['mark_id']);
-            $data[] = $row;
-        }
-    }
-
-    header("Content-Type: application/json; charset=UTF-8");
+    
+    header("Content-Type: application/json");
     echo json_encode($data);
-    exit;
+    exit();
 }
 
 elseif(isset($_POST['updateAssessment'], $_POST['id'], $_POST['subject'], $_POST['form'], $_POST['academic_id'], $_POST['value'])){
