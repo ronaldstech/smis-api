@@ -184,7 +184,7 @@ elseif (isset($_GET['getStudents'])) {
         ? $db->real_escape_string($_GET['school_type'])
         : null;
 
-    $where = $school_type ? "WHERE school_type = '$school_type'" : "";
+    $where = $school_type ? "WHERE school = '$school_type'" : "";
 
     $sql = "
         SELECT s.*, st.username AS admin_name
