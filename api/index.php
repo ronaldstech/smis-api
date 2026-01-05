@@ -180,6 +180,65 @@ elseif (isset($_GET['getStaffA'])) {
     exit;
 }
 
+elseif (isset($_GET['getSubjectProgress'])) {
+
+    if (!isset($_GET['aca_id'], $_GET['form'], $_GET['subject'])) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => false,
+            "message" => "Missing required parameters"
+        ]);
+        exit;
+    }
+
+    $aca_id  = (int) $_GET['aca_id'];
+    $form    = (int) $_GET['form'];
+    $subject = (int) $_GET['subject'];
+
+    $sql = "
+        SELECT
+            COUNT(*) AS total_students,
+            SUM(
+                CASE
+                    WHEN assessments > 0
+                      OR end_term > 0
+                      OR final > 0
+                    THEN 1
+                    ELSE 0
+                END
+            ) AS graded_students
+        FROM marks
+        WHERE aca_id = $aca_id
+          AND form = $form
+          AND subject = $subject
+    ";
+
+    $res = $db->query($sql);
+
+    if (!$res) {
+        http_response_code(500);
+        echo json_encode([
+            "status" => false,
+            "message" => "Database error"
+        ]);
+        exit;
+    }
+
+    $row = $res->fetch_assoc();
+
+    $total   = (int) $row['total_students'];
+    $graded  = (int) $row['graded_students'];
+    $percent = $total > 0 ? round(($graded / $total) * 100) : 0;
+
+    echo json_encode([
+        "status" => true,
+        "total_students" => $total,
+        "graded_students" => $graded,
+        "progress" => $percent
+    ]);
+    exit;
+}
+
 elseif (isset($_GET['getStudents'])) {
 
     $school_type = isset($_GET['school_type'])
