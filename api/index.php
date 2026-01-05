@@ -104,8 +104,8 @@ elseif(isset($_GET['getStaff'])){
 }
 
 elseif (isset($_GET['getStaffA'])) {
-    $school = isset($_GET['school'])
-        ? $db->real_escape_string($_GET['school'])
+    $school = isset($_GET['school_type'])
+        ? $db->real_escape_string($_GET['school_type'])
         : null;
 
     // 1. Get active academic year
