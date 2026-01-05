@@ -313,46 +313,80 @@ elseif(isset($_GET['print_students'])){
    
 }
 
-elseif(isset($_POST['fname_add'], $_POST['lname_add'], $_POST['mname_add'], $_POST['gender_add'], $_POST['form_add'], $_POST['school'])){
+elseif (isset($_POST['addStudent'])) {
+
     $rand = rand(100, 999);
-    $reg = "form".$_POST['form_add']."/".substr(date("Y"), 2,3)."/".$rand;
-    $sub = substr($db->real_escape_string($_POST['fname_add']), 0, 1).$db->real_escape_string($_POST['lname_add']);
-    $email = "nkk".substr(date("Y"), 2,3)."-".$sub."@nkk-sec.com";
+    $form = $db->real_escape_string($_POST['form']);
+
+    $reg = "form{$form}/" . substr(date("Y"), 2, 3) . "/{$rand}";
+
+    $sub = substr($db->real_escape_string($_POST['first']), 0, 1)
+         . $db->real_escape_string($_POST['last']);
+
+    $email = "nkk" . substr(date("Y"), 2, 3) . "-{$sub}@nkk-sec.com";
+
     $add = db_insert("students", [
-        "first" => $db->real_escape_string($_POST['fname_add']),
-        "middle" => $db->real_escape_string($_POST['mname_add']),
-        "last" => $db->real_escape_string($_POST['lname_add']),
-        "gender" => $db->real_escape_string($_POST['gender_add']),
-        "student_reg" => $reg,
-        "form" => $db->real_escape_string($_POST['form_add']),
-        "email" =>$email,
-        "time_added" => time(),
-        "registered_by" => 11,
-        "status" => "active",
-        "school" => "day"
+        "first"         => $db->real_escape_string($_POST['first']),
+        "middle"        => $db->real_escape_string($_POST['middle'] ?? ''),
+        "last"          => $db->real_escape_string($_POST['last']),
+        "gender"        => $db->real_escape_string($_POST['gender']),
+        "student_reg"   => $reg,
+        "form"          => $form,
+        "email"         => $email,
+        "school_type"   => $db->real_escape_string($_POST['school_type']),
+        "time_added"    => time(),
+        "registered_by" => intval($_POST['registered_by']),
+        "status"        => "active"
     ]);
 
-    echo json_encode(["status" => true, "message" => "Success"]);
+    echo json_encode([
+        "status"  => (bool)$add,
+        "message" => $add ? "Student added successfully" : "Failed to add student"
+    ]);
+    exit();
 }
 
-elseif(isset($_POST['student_id_edit'], $_POST['fname_edit'], $_POST['mname_edit'], $_POST['lname_edit'], $_POST['gender_edit'], $_POST['form_edit'], $_POST['reg_edit'])){
-    db_update("students", [
-        "first" => $db->real_escape_string($_POST['fname_edit']),
-        "middle" => $db->real_escape_string($_POST['mname_edit']),
-        "last" => $db->real_escape_string($_POST['lname_edit']),
-        "gender" => $db->real_escape_string($_POST['gender_edit']),
-        "form" => $db->real_escape_string($_POST['form_edit']),
-        "student_reg" => $db->real_escape_string($_POST['reg_edit']),
-    ], ["id" => $_POST['student_id_edit']]);
-    echo json_encode(["status" => true, "message" => "Updated successfully"]);
+
+elseif (isset($_POST['editStudent'])) {
+
+    $update = db_update("students", [
+        "first"       => $db->real_escape_string($_POST['first']),
+        "middle"      => $db->real_escape_string($_POST['middle']),
+        "last"        => $db->real_escape_string($_POST['last']),
+        "gender"      => $db->real_escape_string($_POST['gender']),
+        "form"        => $db->real_escape_string($_POST['form']),
+        "student_reg" => $db->real_escape_string($_POST['student_reg']),
+    ], [
+        "id" => intval($_POST['student_id'])
+    ]);
+
+    echo json_encode([
+        "status"  => (bool)$update,
+        "message" => "Updated successfully"
+    ]);
+    exit();
 }
 
-elseif(isset($_POST['student_id'], $_POST['status_edit'])){
+
+elseif (isset($_POST['student_id'], $_POST['status_edit'])) {
+
+    $status = $_POST['status_edit'] === 'active'
+        ? 'active'
+        : 'inactive';
+
     db_update("students", [
-        "status" => $db->real_escape_string($_POST['status_edit']),
-    ], ["id" => $_POST['student_id']]);
-    echo json_encode(["status" => true, "message" => "Status updated successfully"]);
+        "status" => $status
+    ], [
+        "id" => intval($_POST['student_id'])
+    ]);
+
+    echo json_encode([
+        "status"  => true,
+        "message" => "Status updated successfully"
+    ]);
+    exit();
 }
+
 
 elseif(isset($_POST['subject_name'], $_POST['root_add'])){
     db_insert("subjects", [
