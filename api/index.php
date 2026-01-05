@@ -104,9 +104,12 @@ elseif(isset($_GET['getStaff'])){
 }
 
 elseif (isset($_GET['getStaffA'])) {
+    $school = isset($_GET['school'])
+        ? $db->real_escape_string($_GET['school'])
+        : null;
 
     // 1. Get active academic year
-    $acaRes = $db->query("SELECT id FROM academic_years WHERE status = 'active' LIMIT 1");
+    $acaRes = $db->query("SELECT id FROM academic_years WHERE status = 'active' AND school = '$school' LIMIT 1");
 
     if (!$acaRes || $acaRes->num_rows === 0) {
         http_response_code(500);
