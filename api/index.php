@@ -178,24 +178,36 @@ elseif (isset($_GET['getStaffA'])) {
     exit;
 }
 
-elseif(isset($_GET['getStudents'])){
-    $read = $db->query("SELECT * FROM students ORDER BY form ASC, `last` ASC, `first` ASC, `status` ASC");
+elseif (isset($_GET['getStudents'])) {
+
+    $school_type = isset($_GET['school_type'])
+        ? $db->real_escape_string($_GET['school_type'])
+        : null;
+
+    $where = $school_type ? "WHERE school_type = '$school_type'" : "";
+
+    $sql = "
+        SELECT s.*, st.username AS admin_name
+        FROM students s
+        LEFT JOIN staff st ON st.id = s.registered_by
+        $where
+        ORDER BY s.form ASC, s.last ASC, s.first ASC, s.status ASC
+    ";
+
+    $read = $db->query($sql);
     $data = [];
-    while($row = $read->fetch_assoc()){
+
+    while ($row = $read->fetch_assoc()) {
         $row['time_added'] = date("d M Y h:i:s A", $row['time_added']);
-        $read_admin = $db->query("SELECT * FROM staff WHERE id = ".$row['registered_by']);
-        if($read_admin->num_rows >0){
-            $row['admin_name'] = $read_admin->fetch_assoc()['username'];
-        }
-        else{
-            $row['admin_name'] = 'unknown';
-        }
-        array_push($data, $row);
+        $row['admin_name'] = $row['admin_name'] ?? 'unknown';
+        $data[] = $row;
     }
+
     header("Content-Type: application/json");
     echo json_encode($data);
     exit();
 }
+
 
 elseif(isset($_POST['staff_id_edit'], $_POST['username_edit'], $_POST['phone_edit'], $_POST['acc_type_edit'])){
     $edit = db_update("staff", [
