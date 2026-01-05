@@ -313,38 +313,54 @@ elseif(isset($_GET['print_students'])){
    
 }
 
-elseif (isset($_POST['addStudent'])) {
+elseif (
+    isset(
+        $_POST['fname_add'],
+        $_POST['lname_add'],
+        $_POST['gender_add'],
+        $_POST['form_add'],
+        $_POST['school']
+    )
+) {
 
+    $fname  = $db->real_escape_string(trim($_POST['fname_add']));
+    $mname  = $db->real_escape_string(trim($_POST['mname_add'] ?? ''));
+    $lname  = $db->real_escape_string(trim($_POST['lname_add']));
+    $gender = $db->real_escape_string($_POST['gender_add']);
+    $form   = $db->real_escape_string($_POST['form_add']);
+    $school = $db->real_escape_string($_POST['school']);
+
+    /* ===== STUDENT REG NUMBER ===== */
     $rand = rand(100, 999);
-    $form = $db->real_escape_string($_POST['form']);
+    $reg  = "form{$form}/" . substr(date("Y"), 2, 3) . "/{$rand}";
 
-    $reg = "form{$form}/" . substr(date("Y"), 2, 3) . "/{$rand}";
-
-    $sub = substr($db->real_escape_string($_POST['first']), 0, 1)
-         . $db->real_escape_string($_POST['last']);
-
+    /* ===== EMAIL ===== */
+    $sub   = strtolower(substr($fname, 0, 1) . $lname);
     $email = "nkk" . substr(date("Y"), 2, 3) . "-{$sub}@nkk-sec.com";
 
-    $add = db_insert("students", [
-        "first"         => $db->real_escape_string($_POST['first']),
-        "middle"        => $db->real_escape_string($_POST['middle'] ?? ''),
-        "last"          => $db->real_escape_string($_POST['last']),
-        "gender"        => $db->real_escape_string($_POST['gender']),
+    $insert = db_insert("students", [
+        "first"         => $fname,
+        "middle"        => $mname,
+        "last"          => $lname,
+        "gender"        => $gender,
         "student_reg"   => $reg,
         "form"          => $form,
         "email"         => $email,
-        "school_type"   => $db->real_escape_string($_POST['school_type']),
+        "school"        => $school,
         "time_added"    => time(),
-        "registered_by" => intval($_POST['registered_by']),
+        "registered_by" => 11, // TODO: replace with session user ID
         "status"        => "active"
     ]);
 
     echo json_encode([
-        "status"  => (bool)$add,
-        "message" => $add ? "Student added successfully" : "Failed to add student"
+        "status"  => (bool)$insert,
+        "message" => $insert
+            ? "Student added successfully"
+            : "Failed to add student"
     ]);
     exit();
 }
+
 
 
 elseif (isset($_POST['editStudent'])) {
