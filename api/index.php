@@ -152,6 +152,7 @@ elseif (isset($_GET['getStaffA'])) {
     $subjectQuery = "
         SELECT 
             st.teacher,
+            st.form,
             sub.id AS subject_id,
             sub.name AS subject_name
         FROM subject_teachers st
@@ -167,7 +168,8 @@ elseif (isset($_GET['getStaffA'])) {
             if (isset($staffs[$row['teacher']])) {
                 $staffs[$row['teacher']]['subjects'][] = [
                     "id" => (int) $row['subject_id'],
-                    "name" => $row['subject_name']
+                    "name" => $row['subject_name'],
+                    "form" => (int) $row['form']
                 ];
             }
         }
