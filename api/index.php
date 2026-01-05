@@ -105,30 +105,21 @@ elseif(isset($_GET['getStaff'])){
 
 elseif (isset($_GET['getStaffA'])) {
 
-    if (!isset($_GET['school_type'])) {
-        http_response_code(400);
+    // 1. Get active academic year
+    $acaRes = $db->query("SELECT id FROM academic_years WHERE status = 'active' LIMIT 1");
+
+    if (!$acaRes || $acaRes->num_rows === 0) {
+        http_response_code(500);
         echo json_encode([
             "status" => false,
-            "message" => "school_type is required"
+            "message" => "No active academic year found"
         ]);
         exit;
     }
 
-    $aca_id = intval($_GET['getStaffA']);
-    $school_type = $db->real_escape_string($_GET['school_type']);
+    $aca_id = $acaRes->fetch_assoc()['id'];
 
-    if ($aca_id <= 0) {
-        http_response_code(400);
-        echo json_encode([
-            "status" => false,
-            "message" => "Invalid academic year"
-        ]);
-        exit;
-    }
-
-    /* ============================
-       1. FETCH STAFF (FILTERED)
-    ============================ */
+    // 2. Fetch staff with subject count FOR THIS ACADEMIC YEAR
     $staffQuery = "
         SELECT 
             s.id,
@@ -136,10 +127,9 @@ elseif (isset($_GET['getStaffA'])) {
             COUNT(st.id) AS subject_count
         FROM staff s
         LEFT JOIN subject_teachers st 
-            ON s.id = st.teacher
+            ON s.id = st.teacher 
             AND st.aca_id = '$aca_id'
         WHERE s.status = 'active'
-          AND st.school = '$school_type'
         GROUP BY s.id
         ORDER BY s.username ASC
     ";
@@ -150,42 +140,35 @@ elseif (isset($_GET['getStaffA'])) {
     if ($staffResult && $staffResult->num_rows > 0) {
         while ($row = $staffResult->fetch_assoc()) {
             $staffs[$row['id']] = [
-                "id" => (int)$row['id'],
+                "id" => (int) $row['id'],
                 "username" => $row['username'],
-                "subject_count" => (int)$row['subject_count'],
+                "subject_count" => (int) $row['subject_count'],
                 "subjects" => []
             ];
         }
     }
 
-    /* ============================
-       2. FETCH SUBJECTS PER STAFF
-    ============================ */
-    if (!empty($staffs)) {
+    // 3. Fetch subjects WITH NAMES (JOIN subjects table)
+    $subjectQuery = "
+        SELECT 
+            st.teacher,
+            sub.id AS subject_id,
+            sub.name AS subject_name
+        FROM subject_teachers st
+        INNER JOIN subjects sub ON sub.id = st.subject
+        WHERE st.aca_id = '$aca_id'
+        ORDER BY sub.name ASC
+    ";
 
-        $subjectQuery = "
-            SELECT 
-                st.teacher,
-                sub.id   AS subject_id,
-                sub.name AS subject_name
-            FROM subject_teachers st
-            INNER JOIN subjects sub ON sub.id = st.subject
-            INNER JOIN staff s ON s.id = st.teacher
-            WHERE st.aca_id = '$aca_id'
-              AND st.school = '$school_type'
-            ORDER BY sub.name ASC
-        ";
+    $subjectResult = $db->query($subjectQuery);
 
-        $subjectResult = $db->query($subjectQuery);
-
-        if ($subjectResult && $subjectResult->num_rows > 0) {
-            while ($row = $subjectResult->fetch_assoc()) {
-                if (isset($staffs[$row['teacher']])) {
-                    $staffs[$row['teacher']]['subjects'][] = [
-                        "id" => (int)$row['subject_id'],
-                        "name" => $row['subject_name']
-                    ];
-                }
+    if ($subjectResult && $subjectResult->num_rows > 0) {
+        while ($row = $subjectResult->fetch_assoc()) {
+            if (isset($staffs[$row['teacher']])) {
+                $staffs[$row['teacher']]['subjects'][] = [
+                    "id" => (int) $row['subject_id'],
+                    "name" => $row['subject_name']
+                ];
             }
         }
     }
@@ -194,7 +177,6 @@ elseif (isset($_GET['getStaffA'])) {
     echo json_encode(array_values($staffs));
     exit;
 }
-
 
 elseif (isset($_GET['getStudents'])) {
 
@@ -582,38 +564,16 @@ elseif(isset($_POST['academic_id'], $_POST['status_edit'])){
    }
 }
 
-elseif (isset($_GET['getAcademic'])) {
-
-    if (!isset($_GET['school_type'])) {
-        http_response_code(400);
-        echo json_encode([
-            "status" => false,
-            "message" => "school_type is required"
-        ]);
-        exit();
-    }
-
-    $school_type = $db->real_escape_string($_GET['school_type']);
-
-    $read = $db->query("
-        SELECT *
-        FROM academic_years
-        WHERE status = 'active'
-          AND school_type = '$school_type'
-        ORDER BY id DESC
-        LIMIT 1
-    ");
-
+elseif(isset($_GET['getAcademic'])){
+    $read = $db->query("SELECT * FROM academic_years WHERE `status` = 'active' LIMIT 1");
     $data = [];
-    if ($read && $read->num_rows > 0) {
+    if($read->num_rows>0){
         $data = $read->fetch_assoc();
     }
-
     header("Content-Type: application/json");
     echo json_encode($data);
     exit();
 }
-
 
 elseif(isset($_GET['getRowGrades'])){
     $data = [];
