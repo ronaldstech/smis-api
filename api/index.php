@@ -564,16 +564,38 @@ elseif(isset($_POST['academic_id'], $_POST['status_edit'])){
    }
 }
 
-elseif(isset($_GET['getAcademic'])){
-    $read = $db->query("SELECT * FROM academic_years WHERE `status` = 'active' LIMIT 1");
+elseif (isset($_GET['getAcademic'])) {
+
+    if (!isset($_GET['school_type'])) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => false,
+            "message" => "school_type is required"
+        ]);
+        exit();
+    }
+
+    $school_type = $db->real_escape_string($_GET['school_type']);
+
+    $read = $db->query("
+        SELECT *
+        FROM academic_years
+        WHERE status = 'active'
+          AND school_type = '$school_type'
+        ORDER BY id DESC
+        LIMIT 1
+    ");
+
     $data = [];
-    if($read->num_rows>0){
+    if ($read && $read->num_rows > 0) {
         $data = $read->fetch_assoc();
     }
+
     header("Content-Type: application/json");
     echo json_encode($data);
     exit();
 }
+
 
 elseif(isset($_GET['getRowGrades'])){
     $data = [];
