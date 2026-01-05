@@ -361,8 +361,6 @@ elseif (
     exit();
 }
 
-
-
 elseif (isset($_POST['editStudent'])) {
 
     $update = db_update("students", [
@@ -480,16 +478,36 @@ elseif(isset($_POST['user_id'], $_POST['phone_edit'])){
     echo json_encode(["status" => true, "message" => "Phone updated successfully"]);
 }
 
-elseif(isset($_GET['getAcademicYears'])){
-    $read = $db->query("SELECT * FROM academic_years");
-    $data = [];
-    while($row = $read->fetch_assoc()){
-        array_push($data, $row);
+elseif (isset($_GET['getAcademicYears'])) {
+
+    $school_type = isset($_GET['school_type'])
+        ? $db->real_escape_string($_GET['school_type'])
+        : null;
+
+    if ($school_type) {
+        $read = $db->query("
+            SELECT *
+            FROM academic_years
+            WHERE school = '$school_type'
+        ");
+    } else {
+        // Fallback (should rarely happen)
+        $read = $db->query("
+            SELECT *
+            FROM academic_years
+        ");
     }
+
+    $data = [];
+    while ($row = $read->fetch_assoc()) {
+        $data[] = $row;
+    }
+
     header("Content-Type: application/json");
     echo json_encode($data);
     exit();
 }
+
 
 elseif(isset($_POST['term'], $_POST['academic_year'], $_POST['opening_date'], $_POST['closing_date'], $_POST['next_term_begins_on'], $_POST['fees'], $_POST['school_requirements'])){
     db_insert("academic_years", [
