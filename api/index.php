@@ -795,7 +795,8 @@ elseif(isset($_POST['teacher_id'], $_POST['subject_id'], $_POST['form'], $_POST[
             "form" => $db->real_escape_string($_POST['form']),
             "aca_id" => $db->real_escape_string($_POST['academic_id']),
             "time_added" => $time,
-            "admin" => $_SESSION['staff_id']
+            "admin" => $_SESSION['staff_id'],
+            "school" => $_POST['school_type']
         ]);
         if($add){
             echo json_encode(["status" => true, "message" => "Added successfully"]);
