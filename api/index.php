@@ -837,17 +837,29 @@ elseif (isset($_GET['getSubt'], $_GET['academic_id'], $_GET['teacher_id'], $_GET
 
     $stmt->bind_param("iis", $academicId, $teacherId, $school);
     $stmt->execute();
-    $res = $stmt->get_result();
+    $stmt->store_result();
+
+    $metadata = $stmt->result_metadata();
+    $fields = [];
+    $row = [];
+    while ($field = $metadata->fetch_field()) {
+        $fields[] = &$row[$field->name];
+    }
+    call_user_func_array(array($stmt, 'bind_result'), $fields);
 
     $data = [];
-    while ($row = $res->fetch_assoc()) {
-        $row['subject_data'] = [
-            "id"    => $row['subject_id'],
-            "name"  => $row['subject_name'],
-            "code"  => $row['subject_code'],
-            "form"  => $row['form']
+    while ($stmt->fetch()) {
+        $row_copy = [];
+        foreach ($row as $key => $val) {
+            $row_copy[$key] = $val;
+        }
+        $row_copy['subject_data'] = [
+            "id"    => $row_copy['subject_id'],
+            "name"  => $row_copy['subject_name'],
+            "code"  => $row_copy['subject_code'],
+            "form"  => $row_copy['form']
         ];
-        $data[] = $row;
+        $data[] = $row_copy;
     }
 
     $stmt->close();
