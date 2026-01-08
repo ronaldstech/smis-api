@@ -829,7 +829,6 @@ elseif (
         "form"       => $_POST['form'],
         "aca_id"     => $_POST['academic_id'],
         "time_added" => $time,
-        "admin"      => $_SESSION['staff_id'],
         "school"     => $_POST['school_type']
     ]);
 
