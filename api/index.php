@@ -778,9 +778,9 @@ elseif(isset($_GET['getSubs'])){
     exit();
 }
 
-elseif(isset($_POST['teacher_id'], $_POST['subject_id'], $_POST['form'], $_POST['academic_id'])){
+elseif(isset($_POST['teacher_id'], $_POST['subject_id'], $_POST['form'], $_POST['academic_id'], $_POST['school_type'])){
     $time = time();
-    $check = $db->query("SELECT * FROM subject_teachers WHERE subject = '" . $_POST['subject_id'] . "' AND aca_id = '" . $_POST['academic_id'] . "' AND form = '" . $_POST['form'] . "'");
+    $check = $db->query("SELECT * FROM subject_teachers WHERE subject = '" . $_POST['subject_id'] . "' AND aca_id = '" . $_POST['academic_id'] . "' AND form = '" . $_POST['form'] . "' AND school = '".$_POST['school_type']."'");
     $sch = $check->num_rows;
     $data = $check->fetch_assoc();
     $name = $db->query("SELECT * FROM staff WHERE id = '" . $data['teacher'] . "'")->fetch_assoc();
