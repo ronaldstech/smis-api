@@ -807,24 +807,46 @@ elseif(isset($_POST['teacher_id'], $_POST['subject_id'], $_POST['form'], $_POST[
     exit();
 }
 
-elseif(isset($_GET['getSubt'], $_GET['academic_id'], $_GET['teacher_id'])){
-    $subjects = [];
+elseif (isset($_GET['getSubt'], $_GET['academic_id'], $_GET['teacher_id'], $_GET['school_type'])) {
 
-    $read = $db->query("SELECT * FROM subjects WHERE id IN (SELECT subject FROM subject_teachers WHERE aca_id = '". $_GET['academic_id'] ."' AND teacher = '". $_GET['teacher_id'] ."')");
-    while($row = $read->fetch_assoc()){
-        $subjects[$row['id']] = $row;
-    }
-    
-    $read = $db->query("SELECT * FROM subject_teachers WHERE aca_id = '". $_GET['academic_id'] ."' AND teacher = '". $_GET['teacher_id'] ."'");
+    $academicId = (int) $_GET['academic_id'];
+    $teacherId  = (int) $_GET['teacher_id'];
+    $school     = $db->real_escape_string($_GET['school_type']);
+
+    $sql = "
+        SELECT 
+            st.*,
+            s.name            AS subject_name,
+            s.code            AS subject_code,
+            s.form            AS form,
+            s.id              AS subject_id
+        FROM subject_teachers st
+        INNER JOIN subjects s ON s.id = st.subject
+        WHERE 
+            st.aca_id = $academicId
+            AND st.teacher = $teacherId
+            AND st.school = '$school'
+        ORDER BY s.form ASC, s.name ASC
+    ";
+
+    $res = $db->query($sql);
+
     $data = [];
-    while($row = $read->fetch_assoc()){
-        $row['subject_data'] = $subjects[$row['subject']];
-        array_push($data, $row);
+    while ($row = $res->fetch_assoc()) {
+        $row['subject_data'] = [
+            "id"    => $row['subject_id'],
+            "name"  => $row['subject_name'],
+            "code"  => $row['subject_code'],
+            "form"  => $row['form']
+        ];
+        $data[] = $row;
     }
+
     header("Content-Type: application/json");
     echo json_encode($data);
-    exit();
+    exit;
 }
+
 
 elseif(isset($_POST['deleteSubt'], $_POST['id'])){
     db_delete("subject_teachers", ["id" => $_POST['id']]);
