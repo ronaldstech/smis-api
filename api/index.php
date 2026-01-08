@@ -807,7 +807,7 @@ elseif(isset($_POST['teacher_id'], $_POST['subject_id'], $_POST['form'], $_POST[
     exit();
 }
 
-elseif(isset($_GET['getSubt'], $_GET['academic_id'], $_GET['teacher_id'])){
+elseif(isset($_GET['getSubt'], $_GET['academic_id'], $_GET['teacher_id'], $_GET['school_type'])){
     $subjects = [];
 
     $read = $db->query("SELECT * FROM subjects WHERE id IN (SELECT subject FROM subject_teachers WHERE aca_id = '". $_GET['academic_id'] ."' AND teacher = '". $_GET['teacher_id'] ."')");
@@ -815,7 +815,7 @@ elseif(isset($_GET['getSubt'], $_GET['academic_id'], $_GET['teacher_id'])){
         $subjects[$row['id']] = $row;
     }
     
-    $read = $db->query("SELECT * FROM subject_teachers WHERE aca_id = '". $_GET['academic_id'] ."' AND teacher = '". $_GET['teacher_id'] ."'");
+    $read = $db->query("SELECT * FROM subject_teachers WHERE aca_id = '". $_GET['academic_id'] ."' AND teacher = '". $_GET['teacher_id'] ."' AND school = '".$_GET['school_type']."");
     $data = [];
     while($row = $read->fetch_assoc()){
         $row['subject_data'] = $subjects[$row['subject']];
