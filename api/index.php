@@ -573,71 +573,132 @@ elseif (isset($_GET['getAcademicYears'])) {
 }
 
 
-elseif(isset($_POST['term'], $_POST['academic_year'], $_POST['opening_date'], $_POST['closing_date'], $_POST['next_term_begins_on'], $_POST['fees'], $_POST['school_requirements'])){
+elseif (
+    isset(
+        $_POST['academic_year'],
+        $_POST['term'],
+        $_POST['opening_date'],
+        $_POST['closing_date'],
+        $_POST['next_term_begins_on'],
+        $_POST['fees'],
+        $_POST['school_requirements'],
+        $_POST['school_type']
+    )
+) {
+
     db_insert("academic_years", [
         "name" => $db->real_escape_string($_POST['academic_year']),
         "term" => $db->real_escape_string($_POST['term']),
-        "opening_term" => $db->real_escape_string($_POST['opening_date']),
-        "closing_term" => $db->real_escape_string($_POST['closing_date']),
-        "next_term_begins" => $db->real_escape_string($_POST['next_term_begins_on']),
-        "fees" => $db->real_escape_string($_POST['fees']),
-        "requirements" => $db->real_escape_string($_POST['school_requirements']),
-        "status" => "active"
+        "opening_term" => $_POST['opening_date'],
+        "closing_term" => $_POST['closing_date'],
+        "next_term_begins" => $_POST['next_term_begins_on'],
+        "fees" => $_POST['fees'],
+        "requirements" => $_POST['school_requirements'],
+        "school" => $_POST['school_type'],
+        "status" => "inactive"
     ]);
-    echo json_encode(["status" => true, "message" => "Academic year added successfully"]);
+
+    echo json_encode([
+        "status" => true,
+        "message" => "Academic year added successfully"
+    ]);
+    exit;
 }
 
-elseif(isset($_POST['academic_year_id'], $_POST['status_edit'])){
+elseif (
+    isset(
+        $_POST['academic_year_id_edit'],
+        $_POST['academic_name_edit'],
+        $_POST['term_edit'],
+        $_POST['opening_term_edit'],
+        $_POST['closing_term_edit'],
+        $_POST['next_term_begins_edit'],
+        $_POST['fees_edit'],
+        $_POST['school_requirements_edit']
+    )
+) {
+
     db_update("academic_years", [
-        "status" => $db->real_escape_string($_POST['status_edit'])
-    ], ["id" => $_POST['academic_year_id']]);
-    echo json_encode(["status" => true, "message" => "Status updated successfully"]);
+        "name" => $_POST['academic_name_edit'],
+        "term" => $_POST['term_edit'],
+        "opening_term" => $_POST['opening_term_edit'],
+        "closing_term" => $_POST['closing_term_edit'],
+        "next_term_begins" => $_POST['next_term_begins_edit'],
+        "fees" => $_POST['fees_edit'],
+        "requirements" => $_POST['school_requirements_edit']
+    ], [
+        "id" => $_POST['academic_year_id_edit']
+    ]);
+
+    echo json_encode([
+        "status" => true,
+        "message" => "Updated successfully"
+    ]);
+    exit;
 }
 
-elseif(isset($_POST['academic_year_id_edit'], $_POST['term_edit'], $_POST['academic_name_edit'], $_POST['opening_term_edit'], $_POST['closing_term_edit'], $_POST['next_term_begins_edit'], $_POST['fees_edit'], $_POST['school_requirements_edit'])){
-    db_update("academic_years", [
-        "name" => $db->real_escape_string($_POST['academic_name_edit']),
-        "term" => $db->real_escape_string($_POST['term_edit']),
-        "opening_term" => $db->real_escape_string($_POST['opening_term_edit']),
-        "closing_term" => $db->real_escape_string($_POST['closing_term_edit']),
-        "next_term_begins" => $db->real_escape_string($_POST['next_term_begins_edit']),
-        "fees" => $db->real_escape_string($_POST['fees_edit']),
-        "requirements" => $db->real_escape_string($_POST['school_requirements_edit'])
-    ], ["id" => $_POST['academic_year_id_edit']]);
-    echo json_encode(["status" => true, "message" => "Updated successfully"]);
-}
+elseif (isset($_POST['academic_id'], $_POST['status_edit'], $_POST['school'])) {
 
-elseif(isset($_POST['academic_id'], $_POST['status_edit'])){
-   if($_POST['status_edit'] == "active"){
-        $check = $db->query("SELECT * FROM academic_years WHERE `status` = 'active'")->num_rows;
-        if($check > 0){
-            echo json_encode(["status" => false, "message" => "Cannot activate more than one academic year"]);
-        }
-        else{
-            db_update("academic_years", [
-                "status" => $db->real_escape_string($_POST['status_edit'])
-            ], ["id" => $_POST['academic_id']]);
-            echo json_encode(["status" => true, "message" => "activated"]);
-        }
-   }
-   else{
-    db_update("academic_years", [
-        "status" => $db->real_escape_string($_POST['status_edit'])
-    ], ["id" => $_POST['academic_id']]);
-    echo json_encode(["status" => true, "message" => "deactivated"]);
-   }
-}
+    $academicId = (int) $_POST['academic_id'];
+    $status     = $_POST['status_edit'];
+    $school     = $db->real_escape_string($_POST['school']); // day | open
 
-elseif(isset($_GET['getAcademic'])){
-    $read = $db->query("SELECT * FROM academic_years WHERE `status` = 'active' LIMIT 1");
-    $data = [];
-    if($read->num_rows>0){
-        $data = $read->fetch_assoc();
+    if ($status === "active") {
+
+        // Deactivate all other academic years of the SAME school
+        $db->query("
+            UPDATE academic_years 
+            SET status = 'inactive' 
+            WHERE school = '$school'
+        ");
+
+        // Activate selected academic year
+        db_update("academic_years", [
+            "status" => "active"
+        ], [
+            "id" => $academicId
+        ]);
+
+        echo json_encode([
+            "status" => true,
+            "message" => ucfirst($school) . " academic year activated"
+        ]);
+
+    } else {
+
+        // Deactivate only this academic year
+        db_update("academic_years", [
+            "status" => "inactive"
+        ], [
+            "id" => $academicId
+        ]);
+
+        echo json_encode([
+            "status" => true,
+            "message" => ucfirst($school) . " academic year deactivated"
+        ]);
     }
+
+    exit;
+}
+
+
+elseif (isset($_GET['getAcademic'])) {
+
+    $res = $db->query("
+        SELECT * 
+        FROM academic_years 
+        WHERE status='active'
+        LIMIT 1
+    ");
+
+    $data = $res->num_rows ? $res->fetch_assoc() : [];
+
     header("Content-Type: application/json");
     echo json_encode($data);
-    exit();
+    exit;
 }
+
 
 elseif(isset($_GET['getRowGrades'])){
     $data = [];
