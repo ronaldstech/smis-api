@@ -132,7 +132,7 @@ elseif (isset($_GET['getStaffA'])) {
         LEFT JOIN subject_teachers st 
             ON s.id = st.teacher 
             AND st.aca_id = '$aca_id'
-        WHERE s.status = 'active' AND st.school = '$school'
+        WHERE s.status = 'active'
         GROUP BY s.id
         ORDER BY s.username ASC
     ";
@@ -160,7 +160,7 @@ elseif (isset($_GET['getStaffA'])) {
             sub.name AS subject_name
         FROM subject_teachers st
         INNER JOIN subjects sub ON sub.id = st.subject
-        WHERE st.aca_id = '$aca_id'
+        WHERE st.aca_id = '$aca_id' AND st.school = '$school'
         ORDER BY sub.name ASC
     ";
 
