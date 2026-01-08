@@ -683,12 +683,13 @@ elseif (isset($_POST['academic_id'], $_POST['status_edit'], $_POST['school'])) {
 }
 
 
-elseif (isset($_GET['getAcademic'])) {
+elseif (isset($_GET['getAcademic'], $_GET['school_type'])) {
 
     $res = $db->query("
         SELECT * 
         FROM academic_years 
-        WHERE status='active'
+        WHERE status='active' 
+        AND school = '" . $db->real_escape_string($_GET['school_type']) . "'
         LIMIT 1
     ");
 
