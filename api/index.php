@@ -807,66 +807,23 @@ elseif(isset($_POST['teacher_id'], $_POST['subject_id'], $_POST['form'], $_POST[
     exit();
 }
 
-elseif (isset($_GET['getSubt'], $_GET['academic_id'], $_GET['teacher_id'], $_GET['school_type'])) {
+elseif(isset($_GET['getSubt'], $_GET['academic_id'], $_GET['teacher_id'])){
+    $subjects = [];
 
-    $academicId = (int) $_GET['academic_id'];
-    $teacherId  = (int) $_GET['teacher_id'];
-    $school     = $_GET['school_type'];
-
-    $stmt = $db->prepare("
-        SELECT 
-            st.*,
-            s.name            AS subject_name,
-            s.code            AS subject_code,
-            s.form            AS form,
-            s.id              AS subject_id
-        FROM subject_teachers st
-        INNER JOIN subjects s ON s.id = st.subject
-        WHERE 
-            st.aca_id = ?
-            AND st.teacher = ?
-            AND st.school = ?
-        ORDER BY s.form ASC, s.name ASC
-    ");
-
-    if (!$stmt) {
-        header("Content-Type: application/json");
-        echo json_encode(["error" => "Database error"]);
-        exit;
+    $read = $db->query("SELECT * FROM subjects WHERE id IN (SELECT subject FROM subject_teachers WHERE aca_id = '". $_GET['academic_id'] ."' AND teacher = '". $_GET['teacher_id'] ."')");
+    while($row = $read->fetch_assoc()){
+        $subjects[$row['id']] = $row;
     }
-
-    $stmt->bind_param("iis", $academicId, $teacherId, $school);
-    $stmt->execute();
-    $stmt->store_result();
-
-    $metadata = $stmt->result_metadata();
-    $fields = [];
-    $row = [];
-    while ($field = $metadata->fetch_field()) {
-        $fields[] = &$row[$field->name];
-    }
-    call_user_func_array(array($stmt, 'bind_result'), $fields);
-
+    
+    $read = $db->query("SELECT * FROM subject_teachers WHERE aca_id = '". $_GET['academic_id'] ."' AND teacher = '". $_GET['teacher_id'] ."'");
     $data = [];
-    while ($stmt->fetch()) {
-        $row_copy = [];
-        foreach ($row as $key => $val) {
-            $row_copy[$key] = $val;
-        }
-        $row_copy['subject_data'] = [
-            "id"    => $row_copy['subject_id'],
-            "name"  => $row_copy['subject_name'],
-            "code"  => $row_copy['subject_code'],
-            "form"  => $row_copy['form']
-        ];
-        $data[] = $row_copy;
+    while($row = $read->fetch_assoc()){
+        $row['subject_data'] = $subjects[$row['subject']];
+        array_push($data, $row);
     }
-
-    $stmt->close();
-
     header("Content-Type: application/json");
     echo json_encode($data);
-    exit;
+    exit();
 }
 
 
