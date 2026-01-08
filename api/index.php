@@ -811,9 +811,9 @@ elseif (isset($_GET['getSubt'], $_GET['academic_id'], $_GET['teacher_id'], $_GET
 
     $academicId = (int) $_GET['academic_id'];
     $teacherId  = (int) $_GET['teacher_id'];
-    $school     = $db->real_escape_string($_GET['school_type']);
+    $school     = $_GET['school_type'];
 
-    $sql = "
+    $stmt = $db->prepare("
         SELECT 
             st.*,
             s.name            AS subject_name,
@@ -823,13 +823,21 @@ elseif (isset($_GET['getSubt'], $_GET['academic_id'], $_GET['teacher_id'], $_GET
         FROM subject_teachers st
         INNER JOIN subjects s ON s.id = st.subject
         WHERE 
-            st.aca_id = $academicId
-            AND st.teacher = $teacherId
-            AND st.school = '$school'
+            st.aca_id = ?
+            AND st.teacher = ?
+            AND st.school = ?
         ORDER BY s.form ASC, s.name ASC
-    ";
+    ");
 
-    $res = $db->query($sql);
+    if (!$stmt) {
+        header("Content-Type: application/json");
+        echo json_encode(["error" => "Database error"]);
+        exit;
+    }
+
+    $stmt->bind_param("iis", $academicId, $teacherId, $school);
+    $stmt->execute();
+    $res = $stmt->get_result();
 
     $data = [];
     while ($row = $res->fetch_assoc()) {
@@ -841,6 +849,8 @@ elseif (isset($_GET['getSubt'], $_GET['academic_id'], $_GET['teacher_id'], $_GET
         ];
         $data[] = $row;
     }
+
+    $stmt->close();
 
     header("Content-Type: application/json");
     echo json_encode($data);
