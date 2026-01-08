@@ -1,19 +1,8 @@
 <?php
-$allowedOrigins = [
-    'https://unimarket-mw.com',
-    'http://localhost:5173',
-    'http://localhost:3000'
-];
-
-if (isset($_SERVER['HTTP_ORIGIN']) && in_array($_SERVER['HTTP_ORIGIN'], $allowedOrigins)) {
-    header("Access-Control-Allow-Origin: " . $_SERVER['HTTP_ORIGIN']);
-    header("Access-Control-Allow-Credentials: true");
-}
-
+header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type, Authorization");
 header("Content-Type: application/json");
-
 
 // Handle preflight requests
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -829,6 +818,7 @@ elseif (
         "form"       => $_POST['form'],
         "aca_id"     => $_POST['academic_id'],
         "time_added" => $time,
+        "admin"      => $_SESSION['staff_id'],
         "school"     => $_POST['school_type']
     ]);
 
