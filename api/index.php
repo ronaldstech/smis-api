@@ -778,35 +778,57 @@ elseif(isset($_GET['getSubs'])){
     exit();
 }
 
-elseif(isset($_POST['teacher_id'], $_POST['subject_id'], $_POST['form'], $_POST['academic_id'], $_POST['school_type'])){
+elseif (
+    isset(
+        $_POST['assignSubject'],
+        $_POST['teacher_id'],
+        $_POST['subject_id'],
+        $_POST['form'],
+        $_POST['academic_id'],
+        $_POST['school_type']
+    )
+) {
+
     $time = time();
-    $check = $db->query("SELECT * FROM subject_teachers WHERE subject = '" . $_POST['subject_id'] . "' AND aca_id = '" . $_POST['academic_id'] . "' AND form = '" . $_POST['form'] . "' AND school = '".$_POST['school_type']."'");
-    $sch = $check->num_rows;
-    $data = $check->fetch_assoc();
-    $name = $db->query("SELECT * FROM staff WHERE id = '" . $data['teacher'] . "'")->fetch_assoc();
-    if($sch > 0){
-        echo json_encode(["status" => false, "message" => "Subject already assigned to " . $name['username']]);
+
+    $check = $db->query("
+        SELECT * FROM subject_teachers
+        WHERE subject = '{$_POST['subject_id']}'
+        AND aca_id = '{$_POST['academic_id']}'
+        AND form = '{$_POST['form']}'
+        AND school = '{$_POST['school_type']}'
+    ");
+
+    if ($check->num_rows > 0) {
+        $data = $check->fetch_assoc();
+        $name = $db->query("
+            SELECT username FROM staff WHERE id = '{$data['teacher']}'
+        ")->fetch_assoc();
+
+        echo json_encode([
+            "status" => false,
+            "message" => "Subject already assigned to " . $name['username']
+        ]);
         exit();
     }
-    else{
-        $add = db_insert("subject_teachers", [
-            "teacher" => $db->real_escape_string($_POST['teacher_id']),
-            "subject" => $db->real_escape_string($_POST['subject_id']),
-            "form" => $db->real_escape_string($_POST['form']),
-            "aca_id" => $db->real_escape_string($_POST['academic_id']),
-            "time_added" => $time,
-            "admin" => $_SESSION['staff_id'],
-            "school" => $_POST['school_type']
-        ]);
-        if($add){
-            echo json_encode(["status" => true, "message" => "Added successfully"]);
-        }
-        else{
-            echo json_encode(["status" => false, "message" => "Failed to add"]);
-        }
-    }
+
+    $add = db_insert("subject_teachers", [
+        "teacher"    => $_POST['teacher_id'],
+        "subject"    => $_POST['subject_id'],
+        "form"       => $_POST['form'],
+        "aca_id"     => $_POST['academic_id'],
+        "time_added" => $time,
+        "admin"      => $_SESSION['staff_id'],
+        "school"     => $_POST['school_type']
+    ]);
+
+    echo json_encode([
+        "status"  => $add ? true : false,
+        "message" => $add ? "Added successfully" : "Failed to add"
+    ]);
     exit();
 }
+
 
 elseif(isset($_GET['getSubt'], $_GET['academic_id'], $_GET['teacher_id'], $_GET['school_type'])){
     $subjects = [];
