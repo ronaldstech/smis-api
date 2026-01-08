@@ -807,25 +807,52 @@ elseif(isset($_POST['teacher_id'], $_POST['subject_id'], $_POST['form'], $_POST[
     exit();
 }
 
-elseif(isset($_GET['getSubt'], $_GET['academic_id'], $_GET['teacher_id'], $_GET['school_type'])){
-    $subjects = [];
+elseif (
+    isset($_GET['getSubt'], $_GET['academic_id'], $_GET['teacher_id'], $_GET['school_type'])
+) {
 
-    $read = $db->query("SELECT * FROM subjects WHERE id IN (SELECT subject FROM subject_teachers WHERE aca_id = '". $_GET['academic_id'] ."' AND teacher = '". $_GET['teacher_id'] ."')");
-    while($row = $read->fetch_assoc()){
-        $subjects[$row['id']] = $row;
-    }
-    
-    $read = $db->query("SELECT * FROM subject_teachers WHERE aca_id = '". $_GET['academic_id'] ."' AND teacher = '". $_GET['teacher_id'] ."' AND school = '".$_GET['school_type']."");
+    $academicId = $_GET['academic_id'];
+    $teacherId  = $_GET['teacher_id'];
+    $schoolType = $_GET['school_type'];
+
+    $sql = "
+        SELECT 
+            st.*,
+            s.id   AS subject_id,
+            s.name AS subject_name,
+            s.code AS subject_code
+        FROM subject_teachers st
+        INNER JOIN subjects s ON s.id = st.subject
+        WHERE 
+            st.aca_id  = ?
+            AND st.teacher = ?
+            AND st.school  = ?
+    ";
+
+    $stmt = $db->prepare($sql);
+    $stmt->bind_param("iis", $academicId, $teacherId, $schoolType);
+    $stmt->execute();
+
+    $result = $stmt->get_result();
     $data = [];
-    while($row = $read->fetch_assoc()){
-        $row['subject_data'] = $subjects[$row['subject']];
-        array_push($data, $row);
+
+    while ($row = $result->fetch_assoc()) {
+        $row['subject_data'] = [
+            'id'   => $row['subject_id'],
+            'name' => $row['subject_name'],
+            'code' => $row['subject_code']
+        ];
+
+        // Optional: remove duplicate flat fields
+        unset($row['subject_id'], $row['subject_name'], $row['subject_code']);
+
+        $data[] = $row;
     }
+
     header("Content-Type: application/json");
     echo json_encode($data);
     exit();
 }
-
 
 elseif(isset($_POST['deleteSubt'], $_POST['id'])){
     db_delete("subject_teachers", ["id" => $_POST['id']]);
