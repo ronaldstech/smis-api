@@ -1129,6 +1129,47 @@ elseif(isset($_POST['updateEndTerm'], $_POST['id'], $_POST['subject'], $_POST['f
     exit();
 }
 
+elseif (isset($_POST['deleteMark'])) {
+    $id = (int)$_POST['id'];
+    $subject = (int)$_POST['subject'];
+    $form = (int)$_POST['form'];
+    $academic_id = (int)$_POST['academic_id'];
+    $field = $db->real_escape_string($_POST['field']); // 'assessment' or 'end_term'
+    $school = $_POST['school_type'] ?? 'day';
+
+    // Fetch current marks to recalculate final
+    $read = $db->query("SELECT * FROM marks WHERE student = '$id' AND subject = '$subject' AND aca_id = '$academic_id' AND form = '$form'");
+    
+    if ($read && $read->num_rows > 0) {
+        $data = $read->fetch_assoc();
+        
+        // Recalculate weights
+        $assessments = ($field === 'assessment') ? 0 : (float)$data['assessments'];
+        $end_term = ($field === 'end_term') ? 0 : (float)$data['end_term'];
+
+        if ($school === 'open') {
+            $final = $end_term; // 100% Exam
+        } else {
+            $weighted_exam = round(($end_term / 100) * 60, 0);
+            $final = $assessments + $weighted_exam; // 40 Assessment + 60 Weighted Exam
+        }
+
+        $sql = "UPDATE marks SET 
+                " . ($field === 'assessment' ? "assessments = 0" : "end_term = 0") . ",
+                final = '$final'
+                WHERE student = '$id' AND subject = '$subject' AND aca_id = '$academic_id' AND form = '$form'";
+        
+        if ($db->query($sql)) {
+            echo json_encode(["status" => true, "message" => "Mark cleared successfully"]);
+        } else {
+            echo json_encode(["status" => false, "message" => "Database error"]);
+        }
+    } else {
+        echo json_encode(["status" => false, "message" => "Mark record not found"]);
+    }
+    exit;
+}
+
 elseif(isset($_GET['print_marks'], $_GET['form'], $_GET['academic_id'], $_GET['subject_id'])){
     $form = $_GET['form'];
     $aca_id = $_GET['academic_id'];
