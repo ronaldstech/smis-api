@@ -1085,12 +1085,14 @@ elseif(isset($_POST['updateAssessment'], $_POST['id'], $_POST['subject'], $_POST
     exit();
 }
 
-elseif(isset($_POST['updateEndTerm'], $_POST['id'], $_POST['subject'], $_POST['form'], $_POST['academic_id'], $_POST['value'])){
+elseif(isset($_POST['updateEndTerm'], $_POST['id'], $_POST['subject'], $_POST['form'], $_POST['academic_id'], $_POST['value'], $_POST['school_type'])){
     $student = $_POST['id'];
     $subject = $_POST['subject'];
     $form = $_POST['form'];
     $aca_id = $_POST['academic_id'];
     $end_term = $_POST['value'];
+    $school = $db->real_escape_string($_POST['school_type']);
+
     if($form>=3){
         $level = 'senior';
     }
@@ -1102,6 +1104,7 @@ elseif(isset($_POST['updateEndTerm'], $_POST['id'], $_POST['subject'], $_POST['f
     $read = $db->query("SELECT * FROM marks WHERE student = '$student' AND subject = '$subject' AND form = '$form' AND aca_id = '$aca_id'");
     if($read->num_rows > 0){
         $data = $read->fetch_assoc();
+
         $final = $data['assessments'] + round(($end_term/100)*60, 0);
         $remark_read = $db->query("SELECT * FROM grading WHERE $final BETWEEN min_mark AND max_mark AND level = '$level'")->fetch_assoc();
         $remark = $remark_read['remark'];
@@ -1124,7 +1127,12 @@ elseif(isset($_POST['updateEndTerm'], $_POST['id'], $_POST['subject'], $_POST['f
         }
     }
     else{
-        $final = round($end_term/100)*60;
+        if($school == 'day'){
+            $final = round(($end_term/100)*60, 0);
+        }
+        else{
+            $final = $end_term;
+        }
         $remark_read = $db->query("SELECT * FROM grading WHERE $final BETWEEN min_mark AND max_mark AND level = '$level'")->fetch_assoc();
         $remark = $remark_read['remark'];
         $grade = $remark_read['grade'];
