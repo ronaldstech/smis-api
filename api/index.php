@@ -933,12 +933,13 @@ elseif(isset($_GET['getUploadStatus'])){
 }
 
 elseif (
-    isset($_GET['getYourStudents'], $_GET['form'], $_GET['academic_id'], $_GET['subject_id'])
+    isset($_GET['getYourStudents'], $_GET['form'], $_GET['academic_id'], $_GET['subject_id'], $_GET['school_type'])
 ) {
 
     $form   = (int) $_GET['form'];
     $aca_id = (int) $_GET['academic_id'];
     $sub_id = (int) $_GET['subject_id'];
+    $school = $db->real_escape_string($_GET['school_type']);
 
     $sql = "
         SELECT 
@@ -956,7 +957,8 @@ elseif (
             AND m.aca_id = ?
             AND m.form = ?
             AND m.subject = ?
-        WHERE s.form = ?
+        WHERE s.form = ? 
+          AND s.school = ?  /* Added school filter here */
         ORDER BY s.last ASC, s.first ASC
     ";
 
@@ -967,7 +969,8 @@ elseif (
         exit;
     }
 
-    $stmt->bind_param("iiii", $aca_id, $form, $sub_id, $form);
+    // Updated bind_param: added "s" for the school string and added $school variable
+    $stmt->bind_param("iiiis", $aca_id, $form, $sub_id, $form, $school);
     $stmt->execute();
 
     $result = $stmt->get_result();
