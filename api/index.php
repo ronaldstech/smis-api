@@ -1019,24 +1019,35 @@ elseif (
 }
 
 
-elseif(isset($_POST['updateAssessment'], $_POST['id'], $_POST['subject'], $_POST['form'], $_POST['academic_id'], $_POST['value'])){
+elseif(isset($_POST['updateAssessment'], $_POST['id'], $_POST['subject'], $_POST['form'], $_POST['academic_id'], $_POST['value'], $_POST['school_type'])){
     $student = $_POST['id'];
     $subject = $_POST['subject'];
     $form = $_POST['form'];
     $aca_id = $_POST['academic_id'];
     $assessment = $_POST['value'];
-    if($form>=3){
-        $level = 'senior';
-    }
-    else{
-        $level = 'junior';
-    }
+    $school = $db->real_escape_string($_POST['school_type']);
 
-    //checking if already exists
+    // OPEN SCHOOL logic: Assessment usually not applicable or treated differently
+    // If you want to block assessments for Open school entirely, you could exit here.
+    // Otherwise, we calculate based on school type:
+    
+    $level = ($form >= 3) ? 'senior' : 'junior';
+
+    // 1. Check if already exists
     $read = $db->query("SELECT * FROM marks WHERE student = '$student' AND subject = '$subject' AND form = '$form' AND aca_id = '$aca_id'");
+    
     if($read->num_rows > 0){
         $data = $read->fetch_assoc();
-        $final = $assessment + round(($data['end_term']/100)*60, 2);
+        
+        // Logic change based on school type
+        if($school == 'open') {
+            // For open school, assessment might just be recorded but doesn't affect 'final' if final is just end_term
+            $final = $data['end_term'] > 0 ? $data['end_term'] : $assessment;
+        } else {
+            // Day school: 40% (assessment) + 60% (end_term)
+            $final = $assessment + round(($data['end_term']/100)*60, 2);
+        }
+
         $remark_read = $db->query("SELECT * FROM grading WHERE $final BETWEEN min_mark AND max_mark AND level = '$level'")->fetch_assoc();
         $remark = $remark_read['remark'];
         $grade = $remark_read['grade'];
@@ -1048,39 +1059,19 @@ elseif(isset($_POST['updateAssessment'], $_POST['id'], $_POST['subject'], $_POST
             "remark" => $remark,
             "grade" => $grade
         ], ["student" => $student, "subject" => $subject, "form" => $form, "aca_id" => $aca_id]);
-        if($upd){
-            echo json_encode(["status" => true, "message" => "Mark updated successfully"]);
-            exit();
-        }
-        else{
-            echo json_encode(["status" => false, "message" => $upd->error]);
-            exit();
-        }
-    }
-    else{
-        $remark_read = $db->query("SELECT * FROM grading WHERE $assessment BETWEEN min_mark AND max_mark AND level = '$level'")->fetch_assoc();
-        $remark = $remark_read['remark'];
-        $grade = $remark_read['grade'];
+        
+        echo json_encode($upd ? ["status" => true, "message" => "Mark updated"] : ["status" => false, "message" => "Error"]);
+    } else {
+        // Insert new record
+        $final = $assessment; // Initial final mark is just the assessment
+        $remark_read = $db->query("SELECT * FROM grading WHERE $final BETWEEN min_mark AND max_mark AND level = '$level'")->fetch_assoc();
         
         $ins = db_insert("marks", [
-            "student" => $student,
-            "subject" => $subject,
-            "form" => $form,
-            "aca_id" => $aca_id,
-            "assessments" => $assessment,
-            "final" => $assessment,
-            "remark" => $remark,
-            "grade" => $grade,
-            "time_updated" => time()
+            "student" => $student, "subject" => $subject, "form" => $form, "aca_id" => $aca_id,
+            "assessments" => $assessment, "final" => $final, "remark" => $remark_read['remark'], 
+            "grade" => $remark_read['grade'], "time_updated" => time()
         ]);
-        if($ins){
-            echo json_encode(["status" => true, "message" => "Mark added successfully"]);
-            exit();
-        }
-        else{
-            echo json_encode(["status" => false, "message" => $ins->error]);
-            exit();
-        }
+        echo json_encode($ins ? ["status" => true, "message" => "Mark added"] : ["status" => false, "message" => "Error"]);
     }
     exit();
 }
@@ -1093,69 +1084,47 @@ elseif(isset($_POST['updateEndTerm'], $_POST['id'], $_POST['subject'], $_POST['f
     $end_term = $_POST['value'];
     $school = $db->real_escape_string($_POST['school_type']);
 
-    if($form>=3){
-        $level = 'senior';
-    }
-    else{
-        $level = 'junior';
-    }
+    $level = ($form >= 3) ? 'senior' : 'junior';
 
-    //checking if already exists
     $read = $db->query("SELECT * FROM marks WHERE student = '$student' AND subject = '$subject' AND form = '$form' AND aca_id = '$aca_id'");
+    
     if($read->num_rows > 0){
         $data = $read->fetch_assoc();
 
-        $final = $data['assessments'] + round(($end_term/100)*60, 0);
-        $remark_read = $db->query("SELECT * FROM grading WHERE $final BETWEEN min_mark AND max_mark AND level = '$level'")->fetch_assoc();
-        $remark = $remark_read['remark'];
-        $grade = $remark_read['grade'];
+        // LOGIC BRANCH
+        if($school == 'open') {
+            // Open School: Final is exactly the End Term mark
+            $final = $end_term;
+        } else {
+            // Day School: Final is Assessment (40) + 60% of End Term
+            $final = $data['assessments'] + round(($end_term/100)*60, 0);
+        }
 
+        $remark_read = $db->query("SELECT * FROM grading WHERE $final BETWEEN min_mark AND max_mark AND level = '$level'")->fetch_assoc();
+        
         $upd = db_update("marks", [
             "end_term" => $end_term,
             "final" => $final,
             "time_updated" => time(),
-            "remark" => $remark,
-            "grade" => $grade
+            "remark" => $remark_read['remark'],
+            "grade" => $remark_read['grade']
         ], ["student" => $student, "subject" => $subject, "form" => $form, "aca_id" => $aca_id]);
-        if($upd){
-            echo json_encode(["status" => true, "message" => "Mark updated successfully"]);
-            exit();
-        }
-        else{
-            echo json_encode(["status" => false, "message" => $upd->error]);
-            exit();
-        }
-    }
-    else{
-        if($school == 'day'){
-            $final = round(($end_term/100)*60, 0);
-        }
-        else{
-            $final = $end_term;
-        }
+        
+        echo json_encode($upd ? ["status" => true, "message" => "Mark updated"] : ["status" => false, "message" => "Error"]);
+    } else {
+        // New record
+        $final = $end_term; // For both, if no assessment exists yet, final starts as the value entered
+        
+        // Note: If Day School requires assessment to exist first, you'd add logic here.
+        // But per your request for Open school:
         $remark_read = $db->query("SELECT * FROM grading WHERE $final BETWEEN min_mark AND max_mark AND level = '$level'")->fetch_assoc();
-        $remark = $remark_read['remark'];
-        $grade = $remark_read['grade'];
         
         $ins = db_insert("marks", [
-            "student" => $student,
-            "subject" => $subject,
-            "form" => $form,
-            "aca_id" => $aca_id,
-            "end_term" => $end_term,
-            "final" => $final,
-            "remark" => $remark,
-            "grade" => $grade,
-            "time_updated" => time()
+            "student" => $student, "subject" => $subject, "form" => $form, "aca_id" => $aca_id,
+            "end_term" => $end_term, "final" => $final, "remark" => $remark_read['remark'],
+            "grade" => $remark_read['grade'], "time_updated" => time()
         ]);
-        if($ins){
-            echo json_encode(["status" => true, "message" => "Mark added successfully"]);
-            exit();
-        }
-        else{
-            echo json_encode(["status" => false, "message" => $ins->error]);
-            exit();
-        }
+        echo json_encode($ins ? ["status" => true, "message" => "Mark added"] : ["status" => false, "message" => "Error"]);
     }
     exit();
 }
