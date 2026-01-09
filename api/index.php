@@ -1137,32 +1137,52 @@ elseif (isset($_POST['deleteMark'])) {
     $field = $db->real_escape_string($_POST['field']); // 'assessment' or 'end_term'
     $school = $_POST['school_type'] ?? 'day';
 
-    // Fetch current marks to recalculate final
+    // 1. Fetch current marks to see what's left after deletion
     $read = $db->query("SELECT * FROM marks WHERE student = '$id' AND subject = '$subject' AND aca_id = '$academic_id' AND form = '$form'");
     
     if ($read && $read->num_rows > 0) {
         $data = $read->fetch_assoc();
         
-        // Recalculate weights
-        $assessments = ($field === 'assessment') ? 0 : (float)$data['assessments'];
-        $end_term = ($field === 'end_term') ? 0 : (float)$data['end_term'];
+        // Determine what the values will be after the "delete" action
+        $new_assessments = ($field === 'assessment') ? 0 : (float)$data['assessments'];
+        $new_end_term = ($field === 'end_term') ? 0 : (float)$data['end_term'];
 
-        if ($school === 'open') {
-            $final = $end_term; // 100% Exam
-        } else {
-            $weighted_exam = round(($end_term / 100) * 60, 0);
-            $final = $assessments + $weighted_exam; // 40 Assessment + 60 Weighted Exam
+        // 2. If BOTH fields are now 0, delete the entire row
+        if ($new_assessments == 0 && $new_end_term == 0) {
+            $sql = "DELETE FROM marks WHERE student = '$id' AND subject = '$subject' AND aca_id = '$academic_id' AND form = '$form'";
+            $msg = "Mark record deleted completely";
+        } 
+        // 3. Otherwise, update the remaining mark and recalculate final
+        else {
+            if ($school === 'open') {
+                $final = $new_end_term; 
+            } else {
+                $weighted_exam = round(($new_end_term / 100) * 60, 0);
+                $final = $new_assessments + $weighted_exam;
+            }
+
+            // Recalculate grade and remark for the remaining value
+            $level = ($form >= 3) ? 'senior' : 'junior';
+            $grading_res = $db->query("SELECT * FROM grading WHERE $final BETWEEN min_mark AND max_mark AND level = '$level'");
+            $grading = $grading_res->fetch_assoc();
+            $remark = $grading['remark'] ?? '';
+            $grade = $grading['grade'] ?? '';
+
+            $sql = "UPDATE marks SET 
+                    assessments = '$new_assessments',
+                    end_term = '$new_end_term',
+                    final = '$final',
+                    remark = '$remark',
+                    grade = '$grade',
+                    time_updated = '" . time() . "'
+                    WHERE student = '$id' AND subject = '$subject' AND aca_id = '$academic_id' AND form = '$form'";
+            $msg = "Mark updated successfully";
         }
-
-        $sql = "UPDATE marks SET 
-                " . ($field === 'assessment' ? "assessments = 0" : "end_term = 0") . ",
-                final = '$final'
-                WHERE student = '$id' AND subject = '$subject' AND aca_id = '$academic_id' AND form = '$form'";
         
         if ($db->query($sql)) {
-            echo json_encode(["status" => true, "message" => "Mark cleared successfully"]);
+            echo json_encode(["status" => true, "message" => $msg]);
         } else {
-            echo json_encode(["status" => false, "message" => "Database error"]);
+            echo json_encode(["status" => false, "message" => "Database error: " . $db->error]);
         }
     } else {
         echo json_encode(["status" => false, "message" => "Mark record not found"]);
