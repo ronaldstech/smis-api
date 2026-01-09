@@ -108,21 +108,21 @@ elseif (isset($_GET['getStaffA'])) {
         ? $db->real_escape_string($_GET['school_type'])
         : null;
 
-    // 1. Get active academic year
+    // 1. Get active academic year for this specific school type
     $acaRes = $db->query("SELECT id FROM academic_years WHERE status = 'active' AND school = '$school' LIMIT 1");
 
     if (!$acaRes || $acaRes->num_rows === 0) {
         http_response_code(500);
         echo json_encode([
             "status" => false,
-            "message" => "No active academic year found"
+            "message" => "No active academic year found for $school"
         ]);
         exit;
     }
 
     $aca_id = $acaRes->fetch_assoc()['id'];
 
-    // 2. Fetch staff with subject count FOR THIS ACADEMIC YEAR
+    // 2. Fetch staff with subject count - ADD school filter to the JOIN
     $staffQuery = "
         SELECT 
             s.id,
@@ -132,6 +132,7 @@ elseif (isset($_GET['getStaffA'])) {
         LEFT JOIN subject_teachers st 
             ON s.id = st.teacher 
             AND st.aca_id = '$aca_id'
+            AND st.school = '$school'  /* Added this line */
         WHERE s.status = 'active'
         GROUP BY s.id
         ORDER BY s.username ASC
@@ -151,7 +152,7 @@ elseif (isset($_GET['getStaffA'])) {
         }
     }
 
-    // 3. Fetch subjects WITH NAMES (JOIN subjects table)
+    // 3. Fetch subjects - Ensure the school column matches exactly in your DB
     $subjectQuery = "
         SELECT 
             st.teacher,
@@ -160,7 +161,8 @@ elseif (isset($_GET['getStaffA'])) {
             sub.name AS subject_name
         FROM subject_teachers st
         INNER JOIN subjects sub ON sub.id = st.subject
-        WHERE st.aca_id = '$aca_id' AND st.school = '$school'
+        WHERE st.aca_id = '$aca_id' 
+          AND st.school = '$school'
         ORDER BY sub.name ASC
     ";
 
@@ -174,6 +176,8 @@ elseif (isset($_GET['getStaffA'])) {
                     "name" => $row['subject_name'],
                     "form" => (int) $row['form']
                 ];
+                // Update count if it wasn't captured correctly in the first query
+                $staffs[$row['teacher']]['subject_count'] = count($staffs[$row['teacher']]['subjects']);
             }
         }
     }
