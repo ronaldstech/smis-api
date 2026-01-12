@@ -47,4 +47,21 @@ if (isset($_POST['username'], $_POST['password'])) {
     }
 }
 
+elseif (isset($_GET['getUser'])) {
+    $staff_id = $_GET['getUser'];
+
+    // Use a prepared statement to prevent SQL Injection
+    $stmt = $db->prepare("SELECT * FROM staff WHERE id = ?");
+    $stmt->bind_param("s", $staff_id); // "s" for string, "i" if id is always an integer
+    $stmt->execute();
+
+    // Fetch the result as an associative array, or an empty array if not found
+    $user = $stmt->get_result()->fetch_assoc() ?: [];
+
+    // Return JSON response
+    header("Content-Type: application/json; charset=utf-8");
+    echo json_encode($user);
+    exit;
+}
+
 ?>
