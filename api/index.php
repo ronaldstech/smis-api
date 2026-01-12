@@ -1340,12 +1340,15 @@ elseif(isset($_GET['form_select'], $_GET['type_select'])){
 
 
         if($type == "reports"){
+            header("Content-Type: application/pdf");
             downloadReports($form, $aca_id, $db);
         }
         elseif($type == "marks"){
+            header("Content-Type: application/pdf");
             downloadMarks($form, $aca_id, $db);
         }
         elseif($type == "grades"){
+            header("Content-Type: application/pdf");
             downloadGrades($form, $aca_id, $db);
         }
     }
@@ -1421,12 +1424,15 @@ elseif(isset($_GET['form_select'], $_GET['type_select'])){
 
 
         if($type == "reports"){
+            header("Content-Type: application/pdf");
             downloadReports($form, $aca_id, $db);
         }
         elseif($type == "marks"){
+            header("Content-Type: application/pdf");
             downloadMarks($form, $aca_id, $db);
         }
         elseif($type == "grades"){
+            header("Content-Type: application/pdf");
             downloadGrades($form, $aca_id, $db);
         }
     }
