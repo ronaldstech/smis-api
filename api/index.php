@@ -48,20 +48,18 @@ if (isset($_POST['username'], $_POST['password'])) {
 }
 
 elseif (isset($_GET['getUser'])) {
-    $staff_id = $_GET['getUser'];
+    $staff_id = intval($_GET['getUser']); // Sanitize as integer
 
-    // Use a prepared statement to prevent SQL Injection
-    $stmt = $db->prepare("SELECT * FROM staff WHERE id = ?");
-    $stmt->bind_param("s", $staff_id); // "s" for string, "i" if id is always an integer
-    $stmt->execute();
+    $user = [];
+    $read = $db->query("SELECT * FROM staff WHERE id = '$staff_id'");
+    if ($read && $read->num_rows > 0) {
+        $user = $read->fetch_assoc();
+        $read_d = $db->query("SELECT * FROM districts WHERE id = '{$user['district']}'");
+        $user['district_data'] = $read_d ? $read_d->fetch_assoc() : null;
+    }
 
-    // Fetch the result as an associative array, or an empty array if not found
-    $user = $stmt->get_result()->fetch_assoc() ?: [];
-
-    // Return JSON response
     header("Content-Type: application/json; charset=utf-8");
     echo json_encode($user);
-    exit;
 }
 
 ?>
