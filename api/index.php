@@ -50,6 +50,10 @@ if (isset($_POST['username'], $_POST['password'])) {
 } 
 
 elseif(isset($_GET['getUser'])){
+    if(!isset($_SESSION['staff_id'])){
+        echo json_encode(["status" => false, "message" => "Not logged in"]);
+        exit;
+    }
     $user = [];
     $staff_id = $_SESSION['staff_id'];
     $read = $db->query("SELECT * FROM staff WHERE id = '$staff_id'");
@@ -882,9 +886,17 @@ elseif(isset($_POST['deleteSubt'], $_POST['id'])){
 } */
 
 elseif(isset($_GET['getSubjectsTeacher'])){
+    if(!isset($_SESSION['staff_id'])){
+        echo json_encode(["status" => false, "message" => "Not logged in"]);
+        exit;
+    }
     $data = [];
     $staff_id = $_SESSION['staff_id'];
     $aca = $db->query("SELECT * FROM academic_years WHERE status = 'active'")->fetch_assoc();
+    if(!$aca){
+        echo json_encode(["status" => false, "message" => "No active academic year found"]);
+        exit;
+    }
     $read = $db->query("SELECT * FROM subject_teachers WHERE teacher = '$staff_id' AND aca_id = '" . $aca['id'] . "'");
     while($row = $read->fetch_assoc()){
         $subject = $row['subject'];
@@ -1249,9 +1261,13 @@ elseif(isset($_GET['print_marks'], $_GET['form'], $_GET['academic_id'], $_GET['s
 }
 
 elseif(isset($_GET['form_select'], $_GET['type_select'])){
-    $form = $_GET['form_select'];
+    $form = $db->real_escape_string($_GET['form_select']);
     $type = $_GET['type_select'];
     $read_aca = $db->query("SELECT * FROM academic_years WHERE status = 'active'")->fetch_assoc();
+    if(!$read_aca){
+        echo json_encode(["status" => false, "message" => "No active academic year found"]);
+        exit;
+    }
     $aca_id = $read_aca['id'];
 
     // 1. Read students
