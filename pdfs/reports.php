@@ -1,12 +1,12 @@
 <?php
 //require '../db.php';
-function downloadReports($form, $aca_id, $db){
+function downloadReports($form, $aca_id, $db, $school){
 
-    $read_aca = $db->query("SELECT * FROM academic_years WHERE status = 'active'")->fetch_assoc();
+    $read_aca = $db->query("SELECT * FROM academic_years WHERE status = 'active' AND school = '$school'")->fetch_assoc();
     $aca_id = $read_aca['id'];
 
     // 1. Read students
-    $read_students = $db->query("SELECT * FROM students WHERE form = '$form'");
+    $read_students = $db->query("SELECT * FROM students WHERE form = '$form' AND school = '$school'");
     $students = [];
     $student_ids = []; // to collect student IDs
 
