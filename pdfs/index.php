@@ -185,7 +185,7 @@ if(isset($_GET['form_select'], $_GET['type_select'], $_GET['school_type'])){
 
         if($type == "reports"){
             header("Content-Type: application/pdf");
-            downloadReports($form, $aca_id, $db);
+            downloadReports($form, $aca_id, $db, $school);
         }
         elseif($type == "marks"){
             header("Content-Type: application/pdf");
