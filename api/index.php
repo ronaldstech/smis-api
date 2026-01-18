@@ -14,7 +14,7 @@ session_start();
 require '../db.php';
 require "../functions.php";
 require "../fpdf/fpdf.php";
-//require "../pdfs/reports.php";
+///require "../pdfs/reports.php";
 
 if (isset($_POST['username'], $_POST['password'])) {
 
