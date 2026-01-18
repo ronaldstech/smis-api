@@ -3,14 +3,6 @@
 function downloadReports($form, $aca_id, $db){
 
     $read_aca = $db->query("SELECT * FROM academic_years WHERE status = 'active'")->fetch_assoc();
-    if(!$read_aca){
-        $pdf = new FPDF();
-        $pdf->AddPage();
-        $pdf->SetFont('Arial','',12);
-        $pdf->Cell(0,10,"No active academic year found");
-        $pdf->Output('I', 'error.pdf');
-        exit;
-    }
     $aca_id = $read_aca['id'];
 
     // 1. Read students
@@ -504,14 +496,6 @@ function downloadReports($form, $aca_id, $db){
 function downloadMarks($form, $aca_id, $db){
 
     $read_aca = $db->query("SELECT * FROM academic_years WHERE status = 'active'")->fetch_assoc();
-    if(!$read_aca){
-        $pdf = new FPDF();
-        $pdf->AddPage();
-        $pdf->SetFont('Arial','',12);
-        $pdf->Cell(0,10,"No active academic year found");
-        $pdf->Output('I', 'error.pdf');
-        exit;
-    }
     $aca_id = $read_aca['id'];
 
     // 1. Read students
@@ -811,14 +795,6 @@ function downloadMarks($form, $aca_id, $db){
 function downloadGrades($form, $aca_id, $db){
 
     $read_aca = $db->query("SELECT * FROM academic_years WHERE status = 'active'")->fetch_assoc();
-    if(!$read_aca){
-        $pdf = new FPDF();
-        $pdf->AddPage();
-        $pdf->SetFont('Arial','',12);
-        $pdf->Cell(0,10,"No active academic year found");
-        $pdf->Output('I', 'error.pdf');
-        exit;
-    }
     $aca_id = $read_aca['id'];
 
     // 1. Read students
